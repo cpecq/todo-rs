@@ -1,17 +1,18 @@
-use std::path::PathBuf;
 use structopt::StructOpt;
+use chrono::prelude::*;
+use std::error::Error;
 
 #[derive(Debug, StructOpt)]
 #[structopt(
     name = "todo-rs",
     about = "a simple todo app to set timers and switch tasks"
 )]
-enum todo_rs {
+enum Args {
     /// Add a new task to the task list!
     Add {
         /// Specify the time in hours that the task is estimated to take. Default is one hour.
-        #[structopt(short, long, default_value = "1")]
-        time: f32,
+        #[structopt( default_value = "1")]
+        duration: f32,
 
         /// Name of the task needed to complete.
         #[structopt(short, long)]
@@ -22,8 +23,8 @@ enum todo_rs {
         description: String,
 
         /// A due-date if the task is an ongoing task, fmt "15-01-2021"
-        #[structopt(name = "<Due Date>")]
-        due: Option<String>,
+        #[structopt(name = "<Due Date>", default_value)]
+        due_date: String,
     },
 
     /// Get the status of a targetted or all tasks.
@@ -37,15 +38,54 @@ enum todo_rs {
         all: bool,
     },
 
+    /// Remove all or targetted todo tasks
     Remove {
+        /// Remove a specific taks from the todo list.
         #[structopt(name = "Task Name")]
         name: String,
 
+        /// Remove all tasks from the todo list: do you really want to delete everything?
         #[structopt(short, long)]
         all: bool,
     },
 }
 
+#[derive(Debug)]
+struct Task {
+
+    name: String,
+    description: String,
+    duration: f32,
+    due_date: String,
+
+}
+
+
+impl Task {
+    fn new(name: String, description: String, duration: f32) -> Result <Task, Box< dyn Error>> {
+        let task = Task {
+            name: name,
+            description: description,
+            duration: duration,
+            due_date: Local::today().to_string(),
+        };
+
+       Ok(task)
+
+    }
+}
+
 fn main() {
-    println!("Hello, world!");
+
+    let opts = &Args::from_args();
+    match opts {
+        Args::Add::name => {
+            println!("add was used");
+            Task::new(opts.name, opts.description,  Args::Add::duration);
+        },
+        Status => println!("status was used"),
+        Remove => println!("remove was used"),
+        _ => eprintln!("footsies"),
+
+    }
 }
