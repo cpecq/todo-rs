@@ -1,8 +1,14 @@
+use serde::{Deserialize, Serialize};
+use serde_json::Result;
 use chrono::prelude::*;
 use clap::Clap;
+
 use std::collections::HashMap;
-use std::error::Error;
 use std::fmt;
+use std::io::prelude::*;
+use std::fs::File;
+use std::io::BufReader;
+use std::path::Path;
 
 #[derive(Debug, Clap)]
 #[clap(
@@ -57,7 +63,8 @@ enum Args {
     },
 }
 
-#[derive(Debug, Hash, Eq, PartialEq, Display)]
+#[derive(Hash, Eq, PartialEq)]
+#[derive(Debug, Serialize, Deserialize)]
 struct Task {
     name: String,
     description: String,
@@ -66,48 +73,37 @@ struct Task {
 }
 
 impl Task {
-    fn new() -> Result<Task, std::io::Error> {
+    fn new(name: String, description: String, duration: i32) -> Result<Task> {
         // reformat new function to create a disk storage of todo tasks if there is not one there already/
         // f will open file if it is there or create a file if it is not
-        let mut f = std::fs::OpenOptions::new()
-            .write(true)
-            .create(true)
-            .read(true)
-            .open("db.txt")?;
-        // Need to add in reading the hashmap into a new task -> maybe serialise and deserialise as json
-        let mut content = String::new();
-        f.read_to_string(&mut content)?;
-        let map: HashMap(Task, bool)
+
         let task = Task {
             name,
             description,
             duration,
             due_date: Local::today().to_string(),
         };
+                Ok(task)
+    }
 
-        Ok(task)
+    fn read<P: AsRef<Path>>(path: P) -> Result<Task> {
+
+        let file = File::open(path).unwrap();
+        let reader = BufReader::new(file);
+
+        let t = serde_json::from_reader(reader)?;
+
+        Ok(t)
+
     }
 }
 
-impl fmt::Display for Task {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}, {}, {}, {} ", self.name, self.description, self.duration, self.due_date)
-    }
-}
-
-fn save(map: &mut HashMap<Task, bool>) -> Result<(), std::io::Error> {
-        let mut content = String::new();
-        for(k, v) in map {
-            let record = format!("{}\t{}\n", k, v);
-            content.push_str(&record)
-        }
-        std::fs::write("db.txt", content)
-    }
-
-
-fn main() {
-    let mut tasks = HashMap::new();
+fn main() -> Result<()>{
+ //   let mut tasks = HashMap::new();
     let opts = Opt::parse();
+
+    let mut tasks= Vec::new();
+
 
     println!("{:?}", opts);
     match opts.cmd {
@@ -117,8 +113,26 @@ fn main() {
             description,
         } => {
             println!("add was used");
-            let new_task = Task::new(duration, name, description).unwrap();
-            tasks.insert(new_task, true);
+            let new_task = Task::new(name, description, duration).unwrap();
+
+
+
+            let mut f = std::fs::OpenOptions::new()
+                .append(true)
+                .create(true)
+                .open("db.json").unwrap();
+            let mut c = String::new();
+            f.read_to_string(&mut c).unwrap();
+            let old_task: Task = serde_json::from_str(&mut c).unwrap();
+            tasks.push(old_task);
+            tasks.push(new_task);
+
+            let content = serde_json::to_string(&tasks)?;
+
+            std::fs::write("db.json", content).unwrap();
+
+
+
             println!("{:?}", tasks)
         },
         Args::Status { name, all } => {
@@ -130,5 +144,7 @@ fn main() {
         }
         _ => eprintln!("footsies")
     }
-    save(&mut tasks).unwrap();
+
+
+    Ok(())
 }
