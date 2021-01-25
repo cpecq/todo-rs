@@ -1,6 +1,8 @@
 use chrono::prelude::*;
 use clap::Clap;
+use std::collections::HashMap;
 use std::error::Error;
+use std::fmt;
 
 #[derive(Debug, Clap)]
 #[clap(
@@ -18,7 +20,7 @@ enum Args {
     Add {
         /// Specify the time in hours that the task is estimated to take. Default is one hour.
         #[clap(default_value = "1")]
-        duration: f32,
+        duration: i32,
 
         /// Name of the task needed to complete.
         #[clap(short, long)]
@@ -55,16 +57,27 @@ enum Args {
     },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Hash, Eq, PartialEq, Display)]
 struct Task {
     name: String,
     description: String,
-    duration: f32,
+    duration: i32,
     due_date: String,
 }
 
 impl Task {
-    fn new(duration: f32, name: String, description: String) -> Result<Task, Box<dyn Error>> {
+    fn new() -> Result<Task, std::io::Error> {
+        // reformat new function to create a disk storage of todo tasks if there is not one there already/
+        // f will open file if it is there or create a file if it is not
+        let mut f = std::fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .read(true)
+            .open("db.txt")?;
+        // Need to add in reading the hashmap into a new task -> maybe serialise and deserialise as json
+        let mut content = String::new();
+        f.read_to_string(&mut content)?;
+        let map: HashMap(Task, bool)
         let task = Task {
             name,
             description,
@@ -76,8 +89,26 @@ impl Task {
     }
 }
 
+impl fmt::Display for Task {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}, {}, {}, {} ", self.name, self.description, self.duration, self.due_date)
+    }
+}
+
+fn save(map: &mut HashMap<Task, bool>) -> Result<(), std::io::Error> {
+        let mut content = String::new();
+        for(k, v) in map {
+            let record = format!("{}\t{}\n", k, v);
+            content.push_str(&record)
+        }
+        std::fs::write("db.txt", content)
+    }
+
+
 fn main() {
+    let mut tasks = HashMap::new();
     let opts = Opt::parse();
+
     println!("{:?}", opts);
     match opts.cmd {
         Args::Add {
@@ -86,11 +117,18 @@ fn main() {
             description,
         } => {
             println!("add was used");
-            let task = Task::new(duration, name, description).unwrap();
-            println!("{:?}", task)
+            let new_task = Task::new(duration, name, description).unwrap();
+            tasks.insert(new_task, true);
+            println!("{:?}", tasks)
+        },
+        Args::Status { name, all } => {
+            println!("{:?}", tasks);
+
+        },
+        Args::Remove { name, all } => {
+            println!("remove was used");
         }
-        Args::Status { name, all } => println!("status was used"),
-        Args::Remove { name, all } => println!("remove was used"),
-        _ => eprintln!("footsies"),
+        _ => eprintln!("footsies")
     }
+    save(&mut tasks).unwrap();
 }
