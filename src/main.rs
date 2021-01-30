@@ -74,8 +74,6 @@ struct Task {
 
 impl Task {
     fn new(name: String, description: String, duration: i32) -> Result<Task> {
-        // reformat new function to create a disk storage of todo tasks if there is not one there already/
-        // f will open file if it is there or create a file if it is not
 
         let task = Task {
             name,
@@ -117,21 +115,18 @@ fn main() -> Result<()>{
 
 
 
-            let mut f = std::fs::OpenOptions::new()
-                .append(true)
-                .create(true)
-                .open("db.json").unwrap();
-            let mut c = String::new();
-            f.read_to_string(&mut c).unwrap();
-            let old_task: Task = serde_json::from_str(&mut c).unwrap();
-            tasks.push(old_task);
+            let b = std::path::Path::new("db.json").exists();
+            if b {
+                let f = File::open("db.json").expect("file errpr");
+                let buf = BufReader::new(f);
+                let mut c: Vec<Task> = serde_json::from_reader(buf).expect("error reading json into a task type");
+                tasks.append(&mut c);
+            }
             tasks.push(new_task);
 
             let content = serde_json::to_string(&tasks)?;
 
             std::fs::write("db.json", content).unwrap();
-
-
 
             println!("{:?}", tasks)
         },
