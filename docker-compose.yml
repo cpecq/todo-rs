@@ -1,0 +1,11 @@
+version: '3'
+services:
+  db:
+    image: 'postgres:13.2-alpine'
+    container_name: todors-db
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=library
+      - POSTGRES_PASSWORD=postgres
